@@ -1,0 +1,4 @@
+database:
+  dsn: "user=myuser password=mypassword dbname=mydb sslmode=disable"
+  type: "postgres" # Возможные значения: "postgres", "memory"
+log_level: "debug"
