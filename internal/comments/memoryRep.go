@@ -2,9 +2,11 @@ package comments
 
 import (
 	"errors"
+	"sync"
 )
 
 type InMemoryCommentRepository struct {
+	mu       sync.RWMutex
 	comments map[int][]*Comment
 	nextID   int
 }
@@ -45,4 +47,31 @@ func (r *InMemoryCommentRepository) GetCommentsByPostID(postID int, limit, offse
 	}
 
 	return comments[offset:end], nil
+}
+
+func (r *InMemoryCommentRepository) GetReplies(parentID int) ([]*Comment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var replies []*Comment
+	for _, comment := range r.comments {
+		for _, comm := range comment {
+			if comm.ParentID != nil && *comm.ParentID == parentID {
+				replies = append(replies, comm)
+			}
+		}
+	}
+
+	return replies, nil
+}
+
+func (r *InMemoryCommentRepository) GetCommentByID(id int) (*Comment, error) {
+	for _, comment := range r.comments {
+		for _, comm := range comment {
+			if comm.ID == id {
+				return comm, nil
+			}
+		}
+	}
+	return nil, nil
 }

@@ -94,6 +94,17 @@ func createSchema(postService *posts.PostService, commentService *comments.Comme
 					return resolver.resolveCommentsByPostID(params)
 				},
 			},
+			"replies": &graphql.Field{
+				Type: graphql.NewList(commentType),
+				Args: graphql.FieldConfigArgument{
+					"parentID": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.Int),
+					},
+				},
+				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					return resolver.resolveReplies(params)
+				},
+			},
 		},
 	})
 
@@ -137,6 +148,9 @@ func createSchema(postService *posts.PostService, commentService *comments.Comme
 					"text": &graphql.ArgumentConfig{
 						Type: graphql.NewNonNull(graphql.String),
 					},
+					"parentID": &graphql.ArgumentConfig{
+						Type: graphql.Int,
+					},
 				},
 				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 					return resolver.resolveCreateComment(params)
@@ -149,14 +163,13 @@ func createSchema(postService *posts.PostService, commentService *comments.Comme
 		Name: "Subscription",
 		Fields: graphql.Fields{
 			"commentAdded": &graphql.Field{
-				Type:        commentType, // Тип комментария
+				Type:        commentType,
 				Description: "Subscribe to new comments added to a specific post",
 				Args: graphql.FieldConfigArgument{
 					"postID": &graphql.ArgumentConfig{
 						Type: graphql.NewNonNull(graphql.Int),
 					},
 				},
-				// Resolve функция будет вызвана при получении нового комментария
 				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 					return resolver.postCommentAdded(params, commentService)
 				},
@@ -205,6 +218,9 @@ var commentType = graphql.NewObject(graphql.ObjectConfig{
 		},
 		"text": &graphql.Field{
 			Type: graphql.String,
+		},
+		"parentID": &graphql.Field{
+			Type: graphql.Int,
 		},
 	},
 })

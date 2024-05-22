@@ -84,5 +84,15 @@ func (r *Resolver) resolveCreateComment(params graphql.ResolveParams) (interface
 	if !ok {
 		return nil, errors.New("missing or invalid content argument")
 	}
-	return r.CommentService.CreateComment(postID, content)
+	parentID, _ := params.Args["parentID"].(int)
+
+	return r.CommentService.CreateComment(postID, content, &parentID)
+}
+
+func (r *Resolver) resolveReplies(params graphql.ResolveParams) (interface{}, error) {
+	parentID, ok := params.Args["parentID"].(int)
+	if !ok {
+		return nil, errors.New("missing or invalid parentID argument")
+	}
+	return r.CommentService.GetReplies(parentID)
 }
