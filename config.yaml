@@ -1,4 +1,11 @@
+address: ":8080"
+log_level: "info"
+storage: "in-memory" # "in-memory" или "postgres"
 database:
-  dsn: "user=myuser password=mypassword dbname=mydb sslmode=disable"
-  type: "postgres" # Возможные значения: "postgres", "memory"
-log_level: "debug"
+  driver: "postgres"
+  host: "localhost"
+  port: 5432
+  user: "myuser"
+  password: "mypassword"
+  name: "mydb"
+  sslmode: "disable"

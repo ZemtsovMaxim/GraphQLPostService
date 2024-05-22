@@ -8,7 +8,7 @@ import (
 var log *slog.Logger
 
 // Initialize устанавливает уровень логирования и создает новый логгер
-func Initialize(logLevel string) {
+func SetUpLogger(logLevel string) *slog.Logger {
 	var handler slog.Handler
 
 	switch logLevel {
@@ -25,6 +25,8 @@ func Initialize(logLevel string) {
 	}
 
 	log = slog.New(handler)
+
+	return log
 }
 
 // Logger возвращает текущий логгер

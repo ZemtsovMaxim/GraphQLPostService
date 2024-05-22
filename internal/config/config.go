@@ -1,32 +1,31 @@
 package config
 
 import (
-	"os"
-
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
-type Config struct {
-	Database struct {
-		DSN  string `yaml:"dsn"`
-		Type string `yaml:"type" env-default:"memory"` // postgres или memory
-	} `yaml:"database"`
-	LogLevel string `yaml:"logLevel" env-default:"info"`
+type DatabaseConfig struct {
+	Driver   string `yaml:"driver"`
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	Name     string `yaml:"name"`
+	SSLMode  string `yaml:"sslmode"`
 }
 
-// MustLoad загружает конфигурацию из файла config.yaml
+type Config struct {
+	Address  string         `yaml:"address"`
+	LogLevel string         `yaml:"log_level" env-default:"info"`
+	Storage  string         `yaml:"storage"`
+	DB       DatabaseConfig `yaml:"database"`
+}
+
 func MustLoad() *Config {
-	const configPath = "config.yaml"
-
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		panic("config file does not exist: " + configPath)
-	}
-
 	var cfg Config
-
-	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
+	err := cleanenv.ReadConfig("config.yaml", &cfg)
+	if err != nil {
 		panic("failed to read config: " + err.Error())
 	}
-
 	return &cfg
 }

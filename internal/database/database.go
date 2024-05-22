@@ -1,9 +1,15 @@
 package database
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
 
-// NewDatabase создает подключение к базе данных PostgreSQL
-func NewDatabase(dsn string) (*sql.DB, error) {
+	"github.com/ZemtsovMaxim/OzonTestTask/internal/config"
+)
+
+func Connect(cfg config.DatabaseConfig) (*sql.DB, error) {
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.Name, cfg.SSLMode)
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
