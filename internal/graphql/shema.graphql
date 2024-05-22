@@ -22,3 +22,7 @@ type Mutation {
   createComment(postID: Int!, text: String!): Comment!
   disableComments(postID: Int!): Boolean!
 }
+
+type Subscription {
+  postCommentAdded(postID: Int!): Comment
+}

@@ -6,6 +6,9 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
+// Глобальная переменная для хранения схемы GraphQL
+var schema graphql.Schema
+
 type Resolver struct {
 	PostService    *posts.PostService
 	CommentService *comments.CommentService
@@ -18,7 +21,22 @@ func NewResolver(postService *posts.PostService, commentService *comments.Commen
 	}
 }
 
-func (r *Resolver) resolvePosts(p graphql.ResolveParams) (interface{}, error) {
+// Функция для отправки обновлений подписчикам
+func (s *Resolver) postCommentAdded(p graphql.ResolveParams, commentService *comments.CommentService) (interface{}, error) {
+	// Получаем параметры подписки
+	postID := p.Args["postID"].(int)
+
+	// Получаем последний комментарий к посту
+	comment, err := commentService.GetLastCommentForPost(postID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Отправляем новый комментарий подписчикам
+	return comment, nil
+}
+
+func (r *Resolver) resolvePosts() (interface{}, error) {
 	return r.PostService.GetAllPosts()
 }
 
@@ -50,6 +68,6 @@ func (r *Resolver) resolveCommentsByPostID(p graphql.ResolveParams) (interface{}
 
 func (r *Resolver) resolveCreateComment(p graphql.ResolveParams) (interface{}, error) {
 	postID, _ := p.Args["postID"].(int)
-	content, _ := p.Args["content"].(string)
-	return r.CommentService.CreateComment(postID, content)
+	text, _ := p.Args["text"].(string)
+	return r.CommentService.CreateComment(postID, text)
 }

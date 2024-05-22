@@ -13,16 +13,22 @@ type Server struct {
 	*http.ServeMux
 }
 
+// NewServer создает новый экземпляр сервера GraphQL.
 func NewServer(postService *posts.PostService, commentService *comments.CommentService) *Server {
 	srv := &Server{
 		ServeMux: http.NewServeMux(),
 	}
 
+	// Создаем схему GraphQL
 	schema, err := createSchema(postService, commentService)
 	if err != nil {
 		panic(err)
 	}
 
+	// Добавляем поддержку подписок
+	srv.setupSubscriptions()
+
+	// Добавляем обработчик GraphQL API
 	h := handler.New(&handler.Config{
 		Schema:   schema,
 		Pretty:   true,
@@ -31,6 +37,21 @@ func NewServer(postService *posts.PostService, commentService *comments.CommentS
 
 	srv.Handle("/", h)
 	return srv
+}
+
+// setupSubscriptions добавляет поддержку подписок к серверу GraphQL.
+func (srv *Server) setupSubscriptions() {
+	// Добавляем обработчик подписки на добавление комментария к посту
+	srv.HandleFunc("/subscriptions", func(w http.ResponseWriter, r *http.Request) {
+		// Создаем новый обработчик GraphQL с указанной схемой
+		h := handler.New(&handler.Config{
+			Schema:   &schema, // Передаем созданную ранее схему GraphQL
+			Pretty:   true,
+			GraphiQL: true,
+		})
+		// Обрабатываем запрос с помощью обработчика
+		h.ServeHTTP(w, r)
+	})
 }
 
 func createSchema(postService *posts.PostService, commentService *comments.CommentService) (*graphql.Schema, error) {
@@ -42,7 +63,7 @@ func createSchema(postService *posts.PostService, commentService *comments.Comme
 			"posts": &graphql.Field{
 				Type: graphql.NewList(postType),
 				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-					return resolver.resolvePosts(params)
+					return resolver.resolvePosts()
 				},
 			},
 			"post": &graphql.Field{
@@ -113,7 +134,7 @@ func createSchema(postService *posts.PostService, commentService *comments.Comme
 					"postID": &graphql.ArgumentConfig{
 						Type: graphql.NewNonNull(graphql.Int),
 					},
-					"content": &graphql.ArgumentConfig{
+					"text": &graphql.ArgumentConfig{
 						Type: graphql.NewNonNull(graphql.String),
 					},
 				},
@@ -124,9 +145,29 @@ func createSchema(postService *posts.PostService, commentService *comments.Comme
 		},
 	})
 
+	rootSubscription := graphql.NewObject(graphql.ObjectConfig{
+		Name: "Subscription",
+		Fields: graphql.Fields{
+			"commentAdded": &graphql.Field{
+				Type:        commentType, // Тип комментария
+				Description: "Subscribe to new comments added to a specific post",
+				Args: graphql.FieldConfigArgument{
+					"postID": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.Int),
+					},
+				},
+				// Resolve функция будет вызвана при получении нового комментария
+				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					return resolver.postCommentAdded(params, commentService)
+				},
+			},
+		},
+	})
+
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
-		Query:    rootQuery,
-		Mutation: rootMutation,
+		Query:        rootQuery,
+		Mutation:     rootMutation,
+		Subscription: rootSubscription,
 	})
 	if err != nil {
 		return nil, err
@@ -162,7 +203,7 @@ var commentType = graphql.NewObject(graphql.ObjectConfig{
 		"postID": &graphql.Field{
 			Type: graphql.Int,
 		},
-		"content": &graphql.Field{
+		"text": &graphql.Field{
 			Type: graphql.String,
 		},
 	},

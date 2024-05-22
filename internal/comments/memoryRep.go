@@ -40,5 +40,9 @@ func (r *InMemoryCommentRepository) GetCommentsByPostID(postID int, limit, offse
 		end = len(comments)
 	}
 
+	if limit == 0 && offset == 0 {
+		return comments, nil
+	}
+
 	return comments[offset:end], nil
 }
