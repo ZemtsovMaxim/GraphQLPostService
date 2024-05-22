@@ -7,8 +7,8 @@ import (
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/comments"
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/config"
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/database"
+	myGraphql "github.com/ZemtsovMaxim/OzonTestTask/internal/graphql"
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/logger"
-	"github.com/ZemtsovMaxim/OzonTestTask/internal/myGraphql"
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/posts"
 )
 
@@ -42,26 +42,13 @@ func main() {
 	postService := posts.NewPostService(postRepo)
 	commentService := comments.NewCommentService(commentRepo)
 
-	// Создаем резолвер
-	resolver := myGraphql.NewResolver(postService, commentService)
-
-	// Создаем схему GraphQL
-	schema, err := graphql.NewSchema(graphql.SchemaConfig{
-		Query:    graphql.NewObject(graphql.ObjectConfig{}), // Заполните это в соответствии с вашей схемой
-		Mutation: graphql.NewObject(graphql.ObjectConfig{}), // Заполните это в соответствии с вашей схемой
-	})
-	if err != nil {
-		log.Error("failed to create GraphQL schema", slog.String("error", err.Error()))
-		return
-	}
-
 	// Настраиваем GraphQL сервер
-	server := graphql.NewServer(&schema)
+	server := myGraphql.NewServer(postService, commentService)
 
 	// Запускаем HTTP сервер
 	http.Handle("/", server)
 	log.Info("starting server", slog.String("address", cfg.Address))
-	err = http.ListenAndServe(cfg.Address, nil)
+	err := http.ListenAndServe(cfg.Address, nil)
 	if err != nil {
 		log.Error("failed to start server", slog.String("error", err.Error()))
 	}

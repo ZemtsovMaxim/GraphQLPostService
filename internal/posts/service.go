@@ -8,26 +8,27 @@ func NewPostService(repo PostRepository) *PostService {
 	return &PostService{repo: repo}
 }
 
-// GetAllPosts возвращает список всех постов.
-func (s *PostService) GetAllPosts() ([]*Post, error) {
-	return s.repo.GetAllPosts()
+func (s *PostService) CreatePost(title, content string) (*Post, error) {
+	post := &Post{Title: title, Content: content}
+	err := s.repo.CreatePost(post)
+	if err != nil {
+		return nil, err
+	}
+	return post, nil
 }
 
-// GetPostByID возвращает пост с указанным идентификатором.
 func (s *PostService) GetPostByID(id int) (*Post, error) {
 	return s.repo.GetPostByID(id)
 }
 
-// CreatePost создает новый пост с указанным заголовком и содержимым.
-func (s *PostService) CreatePost(title, content string) error {
-	post := &Post{
-		Title:   title,
-		Content: content,
-	}
-	return s.repo.CreatePost(post)
+func (s *PostService) GetAllPosts() ([]*Post, error) {
+	return s.repo.GetAllPosts()
 }
 
-// DisableComments запрещает оставление комментариев к посту с указанным идентификатором.
-func (s *PostService) DisableComments(postID int) error {
-	return s.repo.DisableComments(postID)
+func (s *PostService) DisableComments(id int) (bool, error) {
+	err := s.repo.DisableComments(id)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

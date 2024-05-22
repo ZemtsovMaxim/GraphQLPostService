@@ -34,13 +34,43 @@ func NewServer(postService *posts.PostService, commentService *comments.CommentS
 }
 
 func createSchema(postService *posts.PostService, commentService *comments.CommentService) (*graphql.Schema, error) {
+	resolver := NewResolver(postService, commentService)
+
 	rootQuery := graphql.NewObject(graphql.ObjectConfig{
 		Name: "RootQuery",
 		Fields: graphql.Fields{
 			"posts": &graphql.Field{
 				Type: graphql.NewList(postType),
 				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-					return postService.GetAllPosts(), nil
+					return resolver.resolvePosts(params)
+				},
+			},
+			"post": &graphql.Field{
+				Type: graphql.NewNonNull(postType),
+				Args: graphql.FieldConfigArgument{
+					"id": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.Int),
+					},
+				},
+				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					return resolver.resolvePost(params)
+				},
+			},
+			"comments": &graphql.Field{
+				Type: graphql.NewList(commentType),
+				Args: graphql.FieldConfigArgument{
+					"postID": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.Int),
+					},
+					"limit": &graphql.ArgumentConfig{
+						Type: graphql.Int,
+					},
+					"offset": &graphql.ArgumentConfig{
+						Type: graphql.Int,
+					},
+				},
+				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					return resolver.resolveCommentsByPostID(params)
 				},
 			},
 		},
@@ -61,9 +91,7 @@ func createSchema(postService *posts.PostService, commentService *comments.Comme
 					},
 				},
 				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-					title := params.Args["title"].(string)
-					content := params.Args["content"].(string)
-					return postService.CreatePost(title, content), nil
+					return resolver.resolveCreatePost(params)
 				},
 			},
 			"disableComments": &graphql.Field{
@@ -75,8 +103,22 @@ func createSchema(postService *posts.PostService, commentService *comments.Comme
 					},
 				},
 				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-					id := params.Args["id"].(int)
-					return postService.DisableComments(id), nil
+					return resolver.resolveDisableComments(params)
+				},
+			},
+			"createComment": &graphql.Field{
+				Type:        commentType,
+				Description: "Create a new comment",
+				Args: graphql.FieldConfigArgument{
+					"postID": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.Int),
+					},
+					"content": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.String),
+					},
+				},
+				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					return resolver.resolveCreateComment(params)
 				},
 			},
 		},
@@ -107,6 +149,21 @@ var postType = graphql.NewObject(graphql.ObjectConfig{
 		},
 		"commentsDisabled": &graphql.Field{
 			Type: graphql.Boolean,
+		},
+	},
+})
+
+var commentType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "Comment",
+	Fields: graphql.Fields{
+		"id": &graphql.Field{
+			Type: graphql.Int,
+		},
+		"postID": &graphql.Field{
+			Type: graphql.Int,
+		},
+		"content": &graphql.Field{
+			Type: graphql.String,
 		},
 	},
 })

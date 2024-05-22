@@ -8,21 +8,15 @@ func NewCommentService(repo CommentRepository) *CommentService {
 	return &CommentService{repo: repo}
 }
 
-func (s *CommentService) CreateComment(postID int, text string) bool {
-	comment := &Comment{
-		PostID: postID,
-		Text:   text,
+func (s *CommentService) CreateComment(postID int, text string) (*Comment, error) {
+	comment := &Comment{PostID: postID, Text: text}
+	err := s.repo.CreateComment(comment)
+	if err != nil {
+		return nil, err
 	}
-	if err := s.repo.CreateComment(comment); err != nil {
-		return false
-	}
-	return true
+	return comment, nil
 }
 
-func (s *CommentService) GetCommentsByPostID(postID int, limit, offset int) []*Comment {
-	comments, err := s.repo.GetCommentsByPostID(postID, limit, offset)
-	if err != nil {
-		return nil
-	}
-	return comments
+func (s *CommentService) GetCommentsByPostID(postID, limit, offset int) ([]*Comment, error) {
+	return s.repo.GetCommentsByPostID(postID, limit, offset)
 }

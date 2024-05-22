@@ -20,12 +20,13 @@ func (r *PostgresPostRepository) CreatePost(post *Post) error {
 }
 
 func (r *PostgresPostRepository) GetPostByID(id int) (*Post, error) {
-	post := &Post{}
-	err := r.db.QueryRow("SELECT id, title, content, comments_disabled FROM posts WHERE id = $1", id).Scan(&post.ID, &post.Title, &post.Content, &post.CommentsDisabled)
+	row := r.db.QueryRow("SELECT id, title, content, comments_disabled FROM posts WHERE id = $1", id)
+	var post Post
+	err := row.Scan(&post.ID, &post.Title, &post.Content, &post.CommentsDisabled)
 	if err != nil {
 		return nil, err
 	}
-	return post, nil
+	return &post, nil
 }
 
 func (r *PostgresPostRepository) GetAllPosts() ([]*Post, error) {
