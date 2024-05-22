@@ -1,6 +1,8 @@
 package myGraphql
 
 import (
+	"errors"
+
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/comments"
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/posts"
 	"github.com/graphql-go/graphql"
@@ -66,8 +68,21 @@ func (r *Resolver) resolveCommentsByPostID(p graphql.ResolveParams) (interface{}
 	return r.CommentService.GetCommentsByPostID(postID, limit, offset)
 }
 
-func (r *Resolver) resolveCreateComment(p graphql.ResolveParams) (interface{}, error) {
-	postID, _ := p.Args["postID"].(int)
-	text, _ := p.Args["text"].(string)
-	return r.CommentService.CreateComment(postID, text)
+func (r *Resolver) resolveCreateComment(params graphql.ResolveParams) (interface{}, error) {
+	postID, ok := params.Args["postID"].(int)
+	if !ok {
+		return nil, errors.New("missing or invalid postID argument")
+	}
+	post, err := r.PostService.GetPostByID(postID)
+	if err != nil {
+		return nil, err
+	}
+	if post.CommentsDisabled {
+		return nil, errors.New("comments are disabled for this post")
+	}
+	content, ok := params.Args["text"].(string)
+	if !ok {
+		return nil, errors.New("missing or invalid content argument")
+	}
+	return r.CommentService.CreateComment(postID, content)
 }

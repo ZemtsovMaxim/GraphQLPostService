@@ -14,7 +14,7 @@ func NewCommentService(repo CommentRepository) *CommentService {
 
 func (s *CommentService) CreateComment(postID int, text string) (*Comment, error) {
 	comment := &Comment{PostID: postID, Text: text}
-	if len(text) > 1999 {
+	if len(text) > 1999 { // Ограничиваем длину комента
 		panic("Comment len more than 2000 symbols")
 	}
 	err := s.repo.CreateComment(comment)
