@@ -2,6 +2,7 @@ package comments
 
 import (
 	"errors"
+	"log/slog"
 	"sync"
 )
 
@@ -9,12 +10,14 @@ type InMemoryCommentRepository struct {
 	mu       sync.RWMutex
 	comments map[int][]*Comment
 	nextID   int
+	logger   *slog.Logger
 }
 
-func NewInMemoryCommentRepository() *InMemoryCommentRepository {
+func NewInMemoryCommentRepository(log *slog.Logger) *InMemoryCommentRepository {
 	return &InMemoryCommentRepository{
 		comments: make(map[int][]*Comment),
 		nextID:   1,
+		logger:   log,
 	}
 }
 
@@ -30,10 +33,12 @@ func (r *InMemoryCommentRepository) CreateComment(comment *Comment) error {
 func (r *InMemoryCommentRepository) GetCommentsByPostID(postID int, limit, offset int) ([]*Comment, error) {
 	comments, exists := r.comments[postID]
 	if !exists {
+		r.logger.Info("comments not found")
 		return nil, errors.New("comments not found")
 	}
 
 	if offset > len(comments) {
+		r.logger.Info("offset bigger than len")
 		return []*Comment{}, nil
 	}
 
@@ -73,5 +78,6 @@ func (r *InMemoryCommentRepository) GetCommentByID(id int) (*Comment, error) {
 			}
 		}
 	}
+	r.logger.Info("comment not found")
 	return nil, nil
 }

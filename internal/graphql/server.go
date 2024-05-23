@@ -2,11 +2,13 @@ package myGraphql
 
 import (
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/comments"
+	"github.com/ZemtsovMaxim/OzonTestTask/internal/config"
+	"github.com/ZemtsovMaxim/OzonTestTask/internal/logger"
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/posts"
 	"github.com/gorilla/websocket"
 	"github.com/graphql-go/graphql"
@@ -18,11 +20,13 @@ type Server struct {
 	upgrader websocket.Upgrader
 	mu       sync.Mutex
 	clients  map[*websocket.Conn]bool
+	logger   *slog.Logger
 }
 
 // NewServer создает новый экземпляр сервера GraphQL.
-func NewServer(postService *posts.PostService, commentService *comments.CommentService) *Server {
+func NewServer(postService *posts.PostService, commentService *comments.CommentService, log *slog.Logger) *Server {
 	srv := &Server{
+		logger:   log,
 		ServeMux: http.NewServeMux(),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
@@ -34,7 +38,7 @@ func NewServer(postService *posts.PostService, commentService *comments.CommentS
 	// Создаем схему GraphQL
 	schema, err := createSchema(postService, commentService)
 	if err != nil {
-		panic(err)
+		log.Error("cant create schema", slog.Any("err", err))
 	}
 
 	// Добавляем обработчик GraphQL API
@@ -74,11 +78,11 @@ func (srv *Server) processSubscriptions(conn *websocket.Conn) {
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			fmt.Println("Error reading message:", err)
+			srv.logger.Error("error reading message", slog.Any("err", err))
 			return
 		}
 
-		fmt.Println("Received message:", string(msg))
+		srv.logger.Info("Received message:", slog.Any("msg", msg))
 
 		response := map[string]interface{}{
 			"type": "data",
@@ -95,20 +99,25 @@ func (srv *Server) processSubscriptions(conn *websocket.Conn) {
 		}
 		responseBytes, err := json.Marshal(response)
 		if err != nil {
-			fmt.Println("Error marshaling response:", err)
+			srv.logger.Error("error marshaling response", slog.Any("err", err))
 			return
 		}
 
 		err = conn.WriteMessage(websocket.TextMessage, responseBytes)
 		if err != nil {
-			fmt.Println("Error writing message:", err)
+			srv.logger.Error("error writing message", slog.Any("err", err))
 			return
 		}
 	}
 }
 
 func createSchema(postService *posts.PostService, commentService *comments.CommentService) (*graphql.Schema, error) {
-	resolver := NewResolver(postService, commentService)
+
+	cfg := config.MustLoad()
+
+	log := logger.SetUpLogger(cfg.LogLevel)
+
+	resolver := NewResolver(postService, commentService, log)
 
 	rootQuery := graphql.NewObject(graphql.ObjectConfig{
 		Name: "RootQuery",
@@ -224,7 +233,7 @@ func createSchema(postService *posts.PostService, commentService *comments.Comme
 					},
 				},
 				Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-					return resolver.postCommentAdded(params, commentService)
+					return resolver.postCommentAdded(params)
 				},
 			},
 		},

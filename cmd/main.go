@@ -24,32 +24,32 @@ func main() {
 	var commentRepo comments.CommentRepository
 
 	if cfg.Storage == "postgres" {
-		db, err := database.Connect(cfg.DB)
+		db, err := database.Connect(cfg.DB, log)
 		if err != nil {
-			log.Error("failed to connect to the database", slog.String("error", err.Error()))
+			log.Error("failed to connect to the database", slog.Any("err", err))
 			return
 		}
-		postRepo = posts.NewPostgresPostRepository(db)
-		commentRepo = comments.NewPostgresCommentRepository(db)
+		postRepo = posts.NewPostgresPostRepository(db, log)
+		commentRepo = comments.NewPostgresCommentRepository(db, log)
 	} else if cfg.Storage == "in-memory" {
-		postRepo = posts.NewInMemoryPostRepository()
-		commentRepo = comments.NewInMemoryCommentRepository()
+		postRepo = posts.NewInMemoryPostRepository(log)
+		commentRepo = comments.NewInMemoryCommentRepository(log)
 	} else {
 		log.Error("invalid storage type", slog.String("storage", cfg.Storage))
 		return
 	}
 
-	postService := posts.NewPostService(postRepo)
-	commentService := comments.NewCommentService(commentRepo)
+	postService := posts.NewPostService(postRepo, log)
+	commentService := comments.NewCommentService(commentRepo, log)
 
 	// Настраиваем GraphQL сервер
-	server := myGraphql.NewServer(postService, commentService)
+	server := myGraphql.NewServer(postService, commentService, log)
 
 	// Запускаем HTTP сервер
 	http.Handle("/", server)
 	log.Info("starting server", slog.String("address", cfg.Address))
 	err := http.ListenAndServe(cfg.Address, nil)
 	if err != nil {
-		log.Error("failed to start server", slog.String("error", err.Error()))
+		log.Error("failed to start server", slog.Any("err", err))
 	}
 }

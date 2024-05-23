@@ -1,6 +1,6 @@
 address: ":8080"
 log_level: "info"
-storage: "postgres" # "in-memory" или "postgres"
+storage: "in-memory" # "in-memory" или "postgres"
 database:
   driver: "postgres"
   host: "localhost"
