@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/config"
+	_ "github.com/lib/pq"
 )
 
 func Connect(cfg config.DatabaseConfig) (*sql.DB, error) {

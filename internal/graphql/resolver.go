@@ -8,9 +8,6 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
-// Глобальная переменная для хранения схемы GraphQL
-var schema graphql.Schema
-
 type Resolver struct {
 	PostService    *posts.PostService
 	CommentService *comments.CommentService

@@ -1,22 +1,34 @@
 package myGraphql
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/comments"
 	"github.com/ZemtsovMaxim/OzonTestTask/internal/posts"
+	"github.com/gorilla/websocket"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/handler"
 )
 
 type Server struct {
 	*http.ServeMux
+	upgrader websocket.Upgrader
+	mu       sync.Mutex
+	clients  map[*websocket.Conn]bool
 }
 
 // NewServer создает новый экземпляр сервера GraphQL.
 func NewServer(postService *posts.PostService, commentService *comments.CommentService) *Server {
 	srv := &Server{
 		ServeMux: http.NewServeMux(),
+		upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		},
 	}
 
 	// Создаем схему GraphQL
@@ -24,9 +36,6 @@ func NewServer(postService *posts.PostService, commentService *comments.CommentS
 	if err != nil {
 		panic(err)
 	}
-
-	// Добавляем поддержку подписок
-	srv.setupSubscriptions()
 
 	// Добавляем обработчик GraphQL API
 	h := handler.New(&handler.Config{
@@ -36,22 +45,66 @@ func NewServer(postService *posts.PostService, commentService *comments.CommentS
 	})
 
 	srv.Handle("/", h)
+	srv.HandleFunc("/subscriptions", srv.handleSubscriptions)
 	return srv
 }
 
-// setupSubscriptions добавляет поддержку подписок к серверу GraphQL.
-func (srv *Server) setupSubscriptions() {
-	// Добавляем обработчик подписки на добавление комментария к посту
-	srv.HandleFunc("/subscriptions", func(w http.ResponseWriter, r *http.Request) {
-		// Создаем новый обработчик GraphQL с указанной схемой
-		h := handler.New(&handler.Config{
-			Schema:   &schema, // Передаем созданную ранее схему GraphQL
-			Pretty:   true,
-			GraphiQL: true,
-		})
-		// Обрабатываем запрос с помощью обработчика
-		h.ServeHTTP(w, r)
-	})
+func (srv *Server) handleSubscriptions(w http.ResponseWriter, r *http.Request) {
+	conn, err := srv.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		http.Error(w, "Could not upgrade connection to WebSocket", http.StatusInternalServerError)
+		return
+	}
+
+	srv.mu.Lock()
+	srv.clients[conn] = true
+	srv.mu.Unlock()
+
+	defer func() {
+		srv.mu.Lock()
+		delete(srv.clients, conn)
+		srv.mu.Unlock()
+		conn.Close()
+	}()
+
+	go srv.processSubscriptions(conn)
+}
+
+func (srv *Server) processSubscriptions(conn *websocket.Conn) {
+	for {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			fmt.Println("Error reading message:", err)
+			return
+		}
+
+		fmt.Println("Received message:", string(msg))
+
+		response := map[string]interface{}{
+			"type": "data",
+			"id":   "1",
+			"payload": map[string]interface{}{
+				"data": map[string]interface{}{
+					"commentAdded": map[string]interface{}{
+						"id":       1,
+						"text":     "This is a test comment",
+						"parentID": nil,
+					},
+				},
+			},
+		}
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			fmt.Println("Error marshaling response:", err)
+			return
+		}
+
+		err = conn.WriteMessage(websocket.TextMessage, responseBytes)
+		if err != nil {
+			fmt.Println("Error writing message:", err)
+			return
+		}
+	}
 }
 
 func createSchema(postService *posts.PostService, commentService *comments.CommentService) (*graphql.Schema, error) {
