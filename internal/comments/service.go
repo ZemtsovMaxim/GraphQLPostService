@@ -16,8 +16,8 @@ func NewCommentService(repo CommentRepository, log *slog.Logger) *CommentService
 
 func (s *CommentService) CreateComment(postID int, text string, parentID *int) (*Comment, error) {
 	comment := &Comment{PostID: postID, Text: text, ParentID: parentID}
-	if *comment.ParentID != 0 {
-		parentComment, err := s.repo.GetCommentByID(*comment.ParentID)
+	if parentID != nil && *parentID != 0 {
+		parentComment, err := s.repo.GetCommentByID(*parentID)
 		if err != nil {
 			s.logger.Error("error fetching parent comment", slog.Any("err", err))
 			return nil, err
@@ -28,8 +28,8 @@ func (s *CommentService) CreateComment(postID int, text string, parentID *int) (
 		}
 	}
 	if len(text) > 1999 { // Ограничиваем длину
-		s.logger.Info("сomment len more than 2000 symbols")
-		return nil, errors.New("сomment len more than 2000 symbols")
+		s.logger.Info("comment length more than 2000 symbols")
+		return nil, errors.New("comment length more than 2000 symbols")
 	}
 	err := s.repo.CreateComment(comment)
 	if err != nil {

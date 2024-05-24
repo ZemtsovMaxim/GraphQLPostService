@@ -23,7 +23,7 @@ type Config struct {
 
 func MustLoad() *Config {
 	var cfg Config
-	err := cleanenv.ReadConfig("config.yaml", &cfg)
+	err := cleanenv.ReadConfig(`config.yaml`, &cfg)
 	if err != nil {
 		panic("failed to read config: " + err.Error())
 	}
