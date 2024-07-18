@@ -1,4 +1,4 @@
-module github.com/ZemtsovMaxim/OzonTestTask
+module github.com/ZemtsovMaxim/GraphQLPostService
 
 go 1.21
 
